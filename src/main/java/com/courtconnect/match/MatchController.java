@@ -1,0 +1,50 @@
+package com.courtconnect.match;
+
+import com.courtconnect.match.dto.MatchCreateRequest;
+import com.courtconnect.match.dto.MatchListResponse;
+import com.courtconnect.match.dto.MatchResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/matches")
+@RequiredArgsConstructor
+public class MatchController {
+
+    private final MatchService matchService;
+
+    @PostMapping
+    public ResponseEntity<MatchResponse> createMatch(@RequestBody MatchCreateRequest request,
+                                                     Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(matchService.createMatch(request, username));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<MatchListResponse>> getAllMatches() {
+        return ResponseEntity.ok(matchService.getAllMatches());
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<MatchResponse> getMatch(@PathVariable Long id) {
+        return ResponseEntity.ok(matchService.getMatch(id));
+    }
+
+    @PostMapping("/{id}/join")
+    public ResponseEntity<MatchResponse> joinMatch(@PathVariable Long id,
+                                                   Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(matchService.joinMatch(id, username));
+    }
+
+    @PostMapping("/{id}/leave")
+    public ResponseEntity<MatchResponse> leaveMatch(@PathVariable Long id,
+                                                    Authentication authentication) {
+        String username = authentication.getName();
+        return ResponseEntity.ok(matchService.leaveMatch(id, username));
+    }
+}
