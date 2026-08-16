@@ -63,4 +63,10 @@ public class MatchController {
                                                            Authentication authentication) {
         return ResponseEntity.ok(matchService.addScore(id, request, authentication.getName()));
     }
+
+    @PostMapping("/{id}/finish")
+    public ResponseEntity<MatchResponse> finishMatch(@PathVariable Long id,
+                                                     Authentication authentication) {
+        return ResponseEntity.ok(matchService.finishMatch(id, authentication.getName()));
+    }
 }

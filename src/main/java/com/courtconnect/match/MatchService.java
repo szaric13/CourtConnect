@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -236,5 +237,54 @@ public class MatchService {
                 .scoreTeamA(match.getScoreTeamA())
                 .scoreTeamB(match.getScoreTeamB())
                 .build();
+    }
+    @Transactional
+    public MatchResponse finishMatch(Long id, String username) {
+        Match match = matchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+
+        // Provera da li je meč LIVE (ili FULL ako nije ni počeo?)
+        if (match.getStatus() != MatchStatus.LIVE) {
+            throw new RuntimeException("Match is not live, cannot finish");
+        }
+
+        // Odredi pobednika
+        if (match.getScoreTeamA() > match.getScoreTeamB()) {
+            // Tim A pobedio
+            updateStatsForTeam(match, true);
+        } else if (match.getScoreTeamB() > match.getScoreTeamA()) {
+            // Tim B pobedio
+            updateStatsForTeam(match, false);
+        } else {
+            // Nerešeno – tretiraj kao nerešeno ili ne ažuriraj win/loss
+            // Za sada ne radimo ništa (ili svi gube? bolje ništa)
+        }
+
+        // Postavi status FINISHED
+        match.setStatus(MatchStatus.FINISHED);
+        match = matchRepository.save(match);
+
+        // Obavesti sve
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
+        return mapToMatchResponse(match);
+    }
+
+    private void updateStatsForTeam(Match match, boolean teamAWon) {
+        Set<User> winners = teamAWon ? match.getTeamA() : match.getTeamB();
+        Set<User> losers = teamAWon ? match.getTeamB() : match.getTeamA();
+
+        for (User user : winners) {
+            user.setWins(user.getWins() + 1);
+            user.setGamesPlayed(user.getGamesPlayed() + 1);
+            user.setTotalPoints(user.getTotalPoints() + (teamAWon ? match.getScoreTeamA() : match.getScoreTeamB()));
+            userRepository.save(user);
+        }
+
+        for (User user : losers) {
+            user.setLosses(user.getLosses() + 1);
+            user.setGamesPlayed(user.getGamesPlayed() + 1);
+            user.setTotalPoints(user.getTotalPoints() + (teamAWon ? match.getScoreTeamB() : match.getScoreTeamA()));
+            userRepository.save(user);
+        }
     }
 }

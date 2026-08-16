@@ -68,4 +68,8 @@ public class User implements UserDetails {
     public boolean isEnabled() {
         return true;
     }
+
+    private Integer wins = 0;
+    private Integer losses = 0;
+    private Integer totalPoints = 0;
 }
