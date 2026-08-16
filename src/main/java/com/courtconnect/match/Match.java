@@ -46,4 +46,53 @@ public class Match {
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
     private Set<User> participants = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "match_team_a",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> teamA = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "match_team_b",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+
+
+    private Set<User> teamB = new HashSet<>();
+
+    @Column(nullable = false)
+    private Boolean teamAReady = false;
+
+    @Column(nullable = false)
+    private Boolean teamBReady = false;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "match_team_a",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> teamA = new HashSet<>();
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "match_team_b",
+            joinColumns = @JoinColumn(name = "match_id"),
+            inverseJoinColumns = @JoinColumn(name = "user_id")
+    )
+    private Set<User> teamB = new HashSet<>();
+
+    @Column(nullable = false)
+    private Boolean teamAReady = false;
+
+    @Column(nullable = false)
+    private Boolean teamBReady = false;
+
+    private Integer scoreTeamA = 0;
+    private Integer scoreTeamB = 0;
 }

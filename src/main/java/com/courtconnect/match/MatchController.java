@@ -1,8 +1,6 @@
 package com.courtconnect.match;
 
-import com.courtconnect.match.dto.MatchCreateRequest;
-import com.courtconnect.match.dto.MatchListResponse;
-import com.courtconnect.match.dto.MatchResponse;
+import com.courtconnect.match.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -46,5 +44,23 @@ public class MatchController {
                                                     Authentication authentication) {
         String username = authentication.getName();
         return ResponseEntity.ok(matchService.leaveMatch(id, username));
+    }
+    @PostMapping("/{id}/team/{team}")
+    public ResponseEntity<MatchResponse> assignTeam(@PathVariable Long id,
+                                                    @PathVariable String team,
+                                                    Authentication authentication) {
+        return ResponseEntity.ok(matchService.assignTeam(id, team, authentication.getName()));
+    }
+
+    @PostMapping("/{id}/ready")
+    public ResponseEntity<MatchResponse> toggleReady(@PathVariable Long id,
+                                                     Authentication authentication) {
+        return ResponseEntity.ok(matchService.toggleReady(id, authentication.getName()));
+    }
+    @PostMapping("/{id}/score")
+    public ResponseEntity<ScoreUpdateResponse> updateScore(@PathVariable Long id,
+                                                           @RequestBody ScoreUpdateRequest request,
+                                                           Authentication authentication) {
+        return ResponseEntity.ok(matchService.addScore(id, request, authentication.getName()));
     }
 }

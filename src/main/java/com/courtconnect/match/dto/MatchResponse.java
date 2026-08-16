@@ -19,4 +19,11 @@ public class MatchResponse {
     private String creatorUsername;
     private Integer participantCount;
     private List<String> participants;
+    private List<String> teamA;
+    private List<String> teamB;
+    private Boolean teamAReady;
+    private Boolean teamBReady;
+
+    private Integer scoreTeamA;
+    private Integer scoreTeamB;
 }

@@ -1,11 +1,10 @@
 package com.courtconnect.match;
 
-import com.courtconnect.match.dto.MatchCreateRequest;
-import com.courtconnect.match.dto.MatchListResponse;
-import com.courtconnect.match.dto.MatchResponse;
+import com.courtconnect.match.dto.*;
 import com.courtconnect.user.User;
 import com.courtconnect.user.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +17,7 @@ public class MatchService {
 
     private final MatchRepository matchRepository;
     private final UserRepository userRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public MatchResponse createMatch(MatchCreateRequest request, String username) {
@@ -34,6 +34,7 @@ public class MatchService {
         match.getParticipants().add(creator);  // kreator se automatski pridružuje
 
         match = matchRepository.save(match);
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
         return mapToMatchResponse(match);
     }
 
@@ -70,7 +71,9 @@ public class MatchService {
             match.setStatus(MatchStatus.FULL);
         }
 
-        return mapToMatchResponse(matchRepository.save(match));
+        match = matchRepository.save(match);
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
+        return mapToMatchResponse(match);
     }
 
     @Transactional
@@ -92,11 +95,112 @@ public class MatchService {
             match.setStatus(MatchStatus.OPEN);
         }
 
-        return mapToMatchResponse(matchRepository.save(match));
+        match = matchRepository.save(match);
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
+        return mapToMatchResponse(match);
     }
 
+    @Transactional
+    public MatchResponse assignTeam(Long id, String team, String username) {
+        Match match = matchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (match.getStatus() != MatchStatus.OPEN && match.getStatus() != MatchStatus.FULL) {
+            throw new RuntimeException("Match already started");
+        }
+
+        // Ukloni igrača iz oba tima, pa dodaj u izabrani
+        match.getTeamA().remove(user);
+        match.getTeamB().remove(user);
+        if ("A".equalsIgnoreCase(team)) {
+            match.getTeamA().add(user);
+        } else if ("B".equalsIgnoreCase(team)) {
+            match.getTeamB().add(user);
+        } else {
+            throw new RuntimeException("Invalid team");
+        }
+
+        match = matchRepository.save(match);
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
+        return mapToMatchResponse(match);
+    }
+
+    @Transactional
+    public MatchResponse toggleReady(Long id, String username) {
+        Match match = matchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (match.getStatus() != MatchStatus.OPEN && match.getStatus() != MatchStatus.FULL) {
+            throw new RuntimeException("Match already started");
+        }
+
+        if (match.getTeamA().contains(user)) {
+            match.setTeamAReady(!match.getTeamAReady());
+        } else if (match.getTeamB().contains(user)) {
+            match.setTeamBReady(!match.getTeamBReady());
+        } else {
+            throw new RuntimeException("User not in any team");
+        }
+
+        // ✅ Kada su oba tima spremna, meč prelazi u LIVE
+        if (match.getTeamAReady() && match.getTeamBReady()) {
+            match.setStatus(MatchStatus.LIVE);
+        }
+
+        match = matchRepository.save(match);
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId(), mapToMatchResponse(match));
+        return mapToMatchResponse(match);
+    }
+
+    @Transactional
+    public ScoreUpdateResponse addScore(Long id, ScoreUpdateRequest request, String username) {
+        Match match = matchRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Match not found"));
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        if (match.getStatus() != MatchStatus.LIVE) {
+            throw new RuntimeException("Match is not live");
+        }
+
+        if ("A".equalsIgnoreCase(request.getTeam())) {
+            match.setScoreTeamA(match.getScoreTeamA() + request.getPoints());
+        } else if ("B".equalsIgnoreCase(request.getTeam())) {
+            match.setScoreTeamB(match.getScoreTeamB() + request.getPoints());
+        } else {
+            throw new RuntimeException("Invalid team");
+        }
+
+        match = matchRepository.save(match);
+
+        ScoreUpdateResponse response = ScoreUpdateResponse.builder()
+                .team(request.getTeam().toUpperCase())
+                .scoreTeamA(match.getScoreTeamA())
+                .scoreTeamB(match.getScoreTeamB())
+                .player(username)
+                .points(request.getPoints())
+                .message(username + " +" + request.getPoints())
+                .build();
+
+        messagingTemplate.convertAndSend("/topic/match/" + match.getId() + "/score", response);
+        return response;
+    }
+
+    // ✅ Dodato scoreTeamA i scoreTeamB u mapToMatchResponse
     private MatchResponse mapToMatchResponse(Match match) {
         List<String> participants = match.getParticipants().stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList());
+
+        List<String> teamA = match.getTeamA().stream()
+                .map(User::getUsername)
+                .collect(Collectors.toList());
+
+        List<String> teamB = match.getTeamB().stream()
                 .map(User::getUsername)
                 .collect(Collectors.toList());
 
@@ -110,6 +214,12 @@ public class MatchService {
                 .creatorUsername(match.getCreator().getUsername())
                 .participantCount(match.getParticipants().size())
                 .participants(participants)
+                .teamA(teamA)
+                .teamB(teamB)
+                .teamAReady(match.getTeamAReady())
+                .teamBReady(match.getTeamBReady())
+                .scoreTeamA(match.getScoreTeamA())
+                .scoreTeamB(match.getScoreTeamB())
                 .build();
     }
 
@@ -123,6 +233,8 @@ public class MatchService {
                 .status(match.getStatus())
                 .creatorUsername(match.getCreator().getUsername())
                 .participantCount(match.getParticipants().size())
+                .scoreTeamA(match.getScoreTeamA())
+                .scoreTeamB(match.getScoreTeamB())
                 .build();
     }
 }

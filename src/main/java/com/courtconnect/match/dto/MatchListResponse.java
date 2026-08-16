@@ -17,4 +17,6 @@ public class MatchListResponse {
     private MatchStatus status;
     private String creatorUsername;
     private Integer participantCount;
+    private Integer scoreTeamA;
+    private Integer scoreTeamB;
 }
