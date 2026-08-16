@@ -1,6 +1,7 @@
 package com.courtconnect.match;
 
 import com.courtconnect.match.dto.*;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -16,7 +17,7 @@ public class MatchController {
     private final MatchService matchService;
 
     @PostMapping
-    public ResponseEntity<MatchResponse> createMatch(@RequestBody MatchCreateRequest request,
+    public ResponseEntity<MatchResponse> createMatch(@Valid @RequestBody MatchCreateRequest request,
                                                      Authentication authentication) {
         String username = authentication.getName();
         return ResponseEntity.ok(matchService.createMatch(request, username));
@@ -59,7 +60,7 @@ public class MatchController {
     }
     @PostMapping("/{id}/score")
     public ResponseEntity<ScoreUpdateResponse> updateScore(@PathVariable Long id,
-                                                           @RequestBody ScoreUpdateRequest request,
+                                                           @Valid @RequestBody ScoreUpdateRequest request,
                                                            Authentication authentication) {
         return ResponseEntity.ok(matchService.addScore(id, request, authentication.getName()));
     }

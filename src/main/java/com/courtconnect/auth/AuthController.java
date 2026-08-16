@@ -4,6 +4,7 @@ import com.courtconnect.auth.dto.*;
 
 import com.courtconnect.user.User;
 import com.courtconnect.user.UserRepository;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
@@ -18,7 +19,7 @@ public class AuthController {
     private final JwtService jwtService;
 
     @PostMapping("/register")
-    public AuthResponse register(@RequestBody RegisterRequest request) {
+    public AuthResponse register(@Valid @RequestBody RegisterRequest request) {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
@@ -32,7 +33,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() -> new RuntimeException("User not found"));
 
