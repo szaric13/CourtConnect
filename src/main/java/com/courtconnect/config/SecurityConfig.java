@@ -75,5 +75,5 @@ public class SecurityConfig {
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-    //cors 3000 za front
+    //cors na 3000
 }
